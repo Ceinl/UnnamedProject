@@ -2,7 +2,7 @@
 
 ## Project Summary
 
-This is a **browser-based visual scene editor** for creating interactive 2D game scenes. It provides a canvas-based interface for placing game objects (props, triggers, colliders), defining their properties, and exporting complete scene definitions as JSON. The editor supports image-based object placement with script attachments using relative paths for cross-machine compatibility.
+This is a **browser-based visual scene editor** for creating interactive 2D game scenes. It provides a canvas-based interface for placing game objects (props, text labels, triggers, colliders), defining their properties, and exporting complete scene definitions as JSON. The editor supports image- and text-based object placement with script attachments using relative paths for cross-machine compatibility.
 
 ---
 
@@ -169,7 +169,7 @@ type Vector2Size = {
   height: number;
 };
 
-type GameObjectType = "prop" | "trigger" | "collider" | "spawn" | "light";
+type GameObjectType = "prop" | "trigger" | "collider" | "spawn" | "light" | "text";
 
 type ColliderShape = "box" | "circle" | "polygon";
 
@@ -205,6 +205,15 @@ type GameObject = {
     action?: string;             // Inline action identifier
     cooldown?: number;           // Seconds between triggers
     oneShot: boolean;            // Trigger only once
+  };
+
+  // Text specific
+  text?: {
+    content: string;             // Display text
+    fontFamily?: string;         // CSS font stack
+    fontSize?: number;           // Font size in px
+    align?: "left" | "center" | "right";
+    lineHeight?: number;         // Line height in px
   };
   
   // Script attachment
@@ -283,7 +292,7 @@ type EditorState = {
   hoveredObjectId: string | null;
   
   // Tools
-  activeTool: "select" | "move" | "place" | "collider" | "trigger";
+  activeTool: "select" | "pan" | "place-prop" | "place-collider" | "place-trigger" | "place-spawn" | "place-text";
   toolOptions: {
     snapToGrid: boolean;
     showGrid: boolean;
@@ -498,10 +507,12 @@ Snapping behavior:
 const SHORTCUTS = {
   // Tools
   "v": "selectTool",
-  "m": "moveTool", 
-  "p": "placeTool",
-  "c": "colliderTool",
-  "t": "triggerTool",
+  "m": "panTool",
+  "1": "placeProp",
+  "2": "placeCollider",
+  "3": "placeTrigger",
+  "4": "placeSpawn",
+  "5": "placeText",
   
   // Actions
   "ctrl+s": "saveScene",
