@@ -1,10 +1,76 @@
 # Engine Upgrade Roadmap
 
-This document tracks planned enhancements to the UnnamedProject game engine. Items are organized by priority and system area.
+This roadmap is organized around delivering a stable Love2D runtime first, then layering gameplay/editor features.
 
 ---
 
-## Phase 1: Core Scene System
+## Phase 1: Core Runtime MVP (Current Priority)
+
+### 1. Scene Data Pipeline
+- [ ] Scene JSON loader (`content/scenes/*.json`)
+- [ ] Strict schema validation for required fields
+- [ ] Runtime defaults for optional fields
+- [ ] Clear error reporting (file, object id, field)
+- [ ] Deterministic object load order
+
+### 2. Object & Component Lifecycle
+- [ ] `GameObject` base (`id`, `type`, `name`, tags, state)
+- [ ] Component lifecycle contract (`init`, `update`, `draw`, `destroy`)
+- [ ] Object manager (`create`, `destroy`, `findById`, `findByTag`)
+- [ ] Z-index sorting + stable tie-breaker
+- [ ] Scene clear/unload cleanup safety
+
+### 3. Core Components
+- [ ] Transform component (position, rotation, scale, size)
+- [ ] Sprite component (image + color fallback)
+- [ ] Collider component (box/circle/polygon input handling)
+- [ ] Trigger component (enter/exit/interact states)
+- [ ] Script component (attach + params + callbacks)
+- [ ] Text component (content, font, size, align, lineHeight)
+
+### 4. Core Systems
+- [ ] Render system (background, sprite, text, debug layers)
+- [ ] Physics system bootstrap (Love2D Box2D world)
+- [ ] Physics-transform synchronization
+- [ ] Trigger system event dispatch
+- [ ] Script manager update loop integration
+
+### 5. Scene Runtime Integration
+- [ ] Scene manager (`load`, `reload`, `unload`)
+- [ ] Camera defaults from scene JSON
+- [ ] Scene-level script execution support
+- [ ] Relative path resolution for assets/scripts
+- [ ] Runtime handling for unsupported object data
+
+### 6. Input & Interaction Baseline
+- [ ] Centralized input router (keyboard/mouse)
+- [ ] Interact key flow for trigger events
+- [ ] Pause-safe update loop behavior
+- [ ] Basic scene switching hook
+
+### 7. Asset & Script Infrastructure
+- [ ] Asset manager cache (images/fonts)
+- [ ] Script loader + protected execution (`pcall` wrappers)
+- [ ] Script hot-reload dev helper (optional in dev mode)
+- [ ] Missing-file fallback behavior (no hard crash)
+
+### 8. Core Debug & Diagnostics
+- [ ] FPS/memory/object counters
+- [ ] Collider and trigger debug draw toggles
+- [ ] Text bounds debug overlay toggle
+- [ ] Runtime warnings panel/log stream
+- [ ] Per-scene load timing logs
+
+### 9. Core QA Gates (Definition of Done)
+- [ ] Load 3+ sample scenes without runtime errors
+- [ ] Validate prop/collider/trigger/spawn/text objects render and update correctly
+- [ ] Trigger enter/exit/interact events fire reliably
+- [ ] Attached scripts run and receive params
+- [ ] Scene unload/reload leaves no orphaned physics bodies/components
+
+---
+
+## Phase 2: Core Scene Features (After MVP)
 
 ### Sprite Animation
 - [ ] Frame sequence definitions (start frame, end frame, duration)
@@ -27,7 +93,7 @@ This document tracks planned enhancements to the UnnamedProject game engine. Ite
 
 ---
 
-## Phase 2: World Building
+## Phase 3: World Building
 
 ### Tilemap System
 - [ ] Tile layer support (multiple layers per scene)
@@ -50,7 +116,7 @@ This document tracks planned enhancements to the UnnamedProject game engine. Ite
 
 ---
 
-## Phase 3: Audio
+## Phase 4: Audio
 
 ### Audio Components
 - [ ] SFX triggers (one-shot and looping)
@@ -61,7 +127,7 @@ This document tracks planned enhancements to the UnnamedProject game engine. Ite
 
 ---
 
-## Phase 4: Advanced Dialogue
+## Phase 5: Advanced Dialogue
 
 ### Text System
 - [ ] Variable interpolation (`{playerName}`, `{goldAmount}`)
@@ -90,7 +156,7 @@ This document tracks planned enhancements to the UnnamedProject game engine. Ite
 
 ---
 
-## Phase 5: Game Systems
+## Phase 6: Game Systems
 
 ### Save/Load System
 - [ ] Scene state serialization
@@ -113,14 +179,14 @@ This document tracks planned enhancements to the UnnamedProject game engine. Ite
 
 ---
 
-## Phase 6: Polish & Tools
+## Phase 7: Polish & Tools
 
-### Editor Enhancements
+### Editor/Runtime Workflow
 - [ ] Undo/redo system
 - [ ] Multi-select and bulk operations
 - [ ] Search and filter in object lists
 - [ ] Asset hot-reload
-- [ ] Scene preview in editor
+- [ ] In-editor/runtime parity checks
 
 ### Performance
 - [ ] Object culling (render only visible objects)
@@ -152,13 +218,13 @@ This document tracks planned enhancements to the UnnamedProject game engine. Ite
 ## Contributing
 
 When adding features:
-1. Update this roadmap to mark items in progress
-2. Follow existing code conventions
-3. Update documentation (AGENTS.md, BEHAVIOR_LAYER_GUIDE.md)
-4. Add sample usage to sample_scene.json when applicable
+1. Update this roadmap to mark items in progress/completed.
+2. Follow existing code conventions.
+3. Update docs (`AGENTS.md`, `BEHAVIOR_LAYER_GUIDE.md`) when behavior changes.
+4. Add sample scene coverage for new runtime capabilities.
 
 ## Current Focus
 
-**Next Milestone:** Phase 1 (Core Scene System)  
-**Priority:** Sprite Animation and Object Hierarchy  
-**Reason:** Required for basic animated character movement and complex object relationships
+**Next Milestone:** Phase 1 (Core Runtime MVP)  
+**Priority:** Scene Data Pipeline + Object/Component Lifecycle + Core Systems  
+**Reason:** Everything else depends on a stable runtime foundation.
