@@ -7,6 +7,7 @@ This guide explains how to build the runtime behavior layer for Love2D that cons
 **What you're building:**
 - Scene loader and manager
 - Game object system with component architecture
+- Text rendering for scene-authored labels
 - Script attachment and execution system
 - Physics integration for colliders
 - Dialogue runtime with state management
@@ -34,6 +35,7 @@ This guide explains how to build the runtime behavior layer for Love2D that cons
 │  Components/                                            │
 │  ├── Transform.lua (position, rotation, scale)          │
 │  ├── Sprite.lua (visual rendering)                      │
+│  ├── Text.lua (runtime text rendering)                  │
 │  ├── Collider.lua (physics body/shape)                  │
 │  ├── Trigger.lua (event zones)                          │
 │  └── Script.lua (behavior attachment)                   │
@@ -70,6 +72,7 @@ my_game/
 │   │   ├── Component.lua      # Base class
 │   │   ├── Transform.lua
 │   │   ├── Sprite.lua
+│   │   ├── Text.lua
 │   │   ├── Collider.lua
 │   │   ├── Trigger.lua
 │   │   └── Script.lua
@@ -94,6 +97,7 @@ my_game/
 │   └── entities/              # Game object definitions
 │       ├── GameObject.lua     # Base game object class
 │       ├── Prop.lua           # Static objects
+│       ├── TextLabel.lua      # Text-only objects
 │       ├── TriggerZone.lua    # Trigger areas
 │       └── SpawnPoint.lua     # Spawn markers
 │
@@ -823,6 +827,71 @@ return Sprite
 
 ---
 
+### 6.5 Text Component
+
+**src/components/Text.lua**
+
+```lua
+local Component = require("src.components.Component")
+
+local Text = setmetatable({}, { __index = Component })
+Text.__index = Text
+
+function Text.new(gameObject, data)
+    local self = setmetatable(Component.new(gameObject), Text)
+
+    self.content = data.content or "Text"
+    self.fontFamily = data.fontFamily or "assets/fonts/default.ttf"
+    self.fontSize = data.fontSize or 36
+    self.align = data.align or "center" -- left | center | right
+    self.lineHeight = data.lineHeight or math.floor(self.fontSize * 1.2)
+    self.font = nil
+
+    return self
+end
+
+function Text:init()
+    -- Prefer a scene-authored font, fallback to default Love font
+    local ok, loadedFont = pcall(love.graphics.newFont, self.fontFamily, self.fontSize)
+    if ok and loadedFont then
+        self.font = loadedFont
+    else
+        self.font = love.graphics.newFont(self.fontSize)
+    end
+end
+
+function Text:draw()
+    local transform = self.gameObject:getComponent("Transform")
+    if not transform then return end
+
+    local x, y = transform.position.x, transform.position.y
+    local w, h = transform:getSize()
+    local scale = transform:getScale()
+    local rotation = transform:getRotationRad()
+
+    love.graphics.push()
+    love.graphics.translate(x, y)
+    love.graphics.rotate(rotation)
+    love.graphics.scale(scale.x, scale.y)
+
+    local color = self.gameObject.color or { 1, 1, 1, 1 }
+    if type(color) == "string" then
+        -- Parse hex elsewhere in your runtime if you store CSS-like colors.
+        color = { 1, 1, 1, 1 }
+    end
+
+    love.graphics.setColor(color[1], color[2], color[3], color[4] or 1)
+    love.graphics.setFont(self.font)
+    love.graphics.printf(self.content, -w / 2, -h / 2, w, self.align)
+
+    love.graphics.pop()
+end
+
+return Text
+```
+
+---
+
 ### 7. Collider Component (Box2D Integration)
 
 **src/components/Collider.lua**
@@ -1497,8 +1566,14 @@ function GameObject.fromJSON(game, data)
     -- Add Transform (required)
     object:addComponent("Transform", data)
     
-    -- Add Sprite if has sprite or color
-    if data.sprite or data.color then
+    -- Add Text component for authored scene text objects.
+    -- Text objects still keep Transform/size/zIndex and can also have scripts.
+    if data.type == "text" then
+        object:addComponent("Text", data.text or {})
+    end
+
+    -- Add Sprite for non-text visual objects
+    if data.type ~= "text" and (data.sprite or data.color) then
         object:addComponent("Sprite", data)
     end
     
@@ -1827,7 +1902,38 @@ function SceneManager:loadScene(sceneId)
     
     print("Scene loaded successfully")
 end
+```
 
+Text objects from Scene Editor are represented like this:
+
+```json
+{
+  "id": "intro_title",
+  "type": "text",
+  "name": "Intro Title",
+  "position": { "x": 640, "y": 180 },
+  "size": { "width": 520, "height": 120 },
+  "rotation": 0,
+  "scale": { "x": 1, "y": 1 },
+  "color": "#e8ecff",
+  "zIndex": 30,
+  "text": {
+    "content": "THE ASHEN FOREST",
+    "fontFamily": "assets/fonts/Cinzel-Bold.ttf",
+    "fontSize": 54,
+    "align": "center",
+    "lineHeight": 60
+  }
+}
+```
+
+Runtime handling rules:
+- `type == "text"`: add `Text` component, do not add `Sprite`.
+- Keep `Transform` and `Script` behavior identical to other objects.
+- Use `size.width` as wrapping width and `size.height` as vertical text block area.
+- Respect `zIndex` so authored text layers with sprites/props predictably.
+
+```lua
 function SceneManager:parseColor(colorStr)
     if type(colorStr) ~= "string" or colorStr:sub(1, 1) ~= "#" then
         return { 0.1, 0.1, 0.1, 1 }
