@@ -7,59 +7,59 @@ This roadmap is organized around delivering a stable Love2D runtime first, then 
 ## Phase 1: Core Runtime MVP (Current Priority)
 
 ### 1. Scene Data Pipeline
-- [ ] Scene JSON loader (`content/scenes/*.json`)
-- [ ] Strict schema validation for required fields
-- [ ] Runtime defaults for optional fields
-- [ ] Clear error reporting (file, object id, field)
-- [ ] Deterministic object load order
+- [x] Scene JSON loader (`content/scenes/*.json`)
+- [x] Strict schema validation for required fields
+- [x] Runtime defaults for optional fields
+- [x] Clear error reporting (file, object id, field)
+- [x] Deterministic object load order
 
 ### 2. Object & Component Lifecycle
-- [ ] `GameObject` base (`id`, `type`, `name`, tags, state)
-- [ ] Component lifecycle contract (`init`, `update`, `draw`, `destroy`)
-- [ ] Object manager (`create`, `destroy`, `findById`, `findByTag`)
-- [ ] Z-index sorting + stable tie-breaker
-- [ ] Scene clear/unload cleanup safety
+- [x] `GameObject` base (`id`, `type`, `name`, tags, state)
+- [x] Component lifecycle contract (`init`, `update`, `draw`, `destroy`)
+- [x] Object manager (`create`, `destroy`, `findById`, `findByTag`)
+- [x] Z-index sorting + stable tie-breaker
+- [x] Scene clear/unload cleanup safety
 
 ### 3. Core Components
-- [ ] Transform component (position, rotation, scale, size)
-- [ ] Sprite component (image + color fallback)
-- [ ] Collider component (box/circle/polygon input handling)
-- [ ] Trigger component (enter/exit/interact states)
-- [ ] Script component (attach + params + callbacks)
-- [ ] Text component (content, font, size, align, lineHeight)
+- [x] Transform component (position, rotation, scale, size)
+- [x] Sprite component (image + color fallback)
+- [x] Collider component (box/circle/polygon input handling)
+- [x] Trigger component (enter/exit/interact states)
+- [x] Script component (attach + params + callbacks)
+- [x] Text component (content, font, size, align, lineHeight)
 
 ### 4. Core Systems
-- [ ] Render system (background, sprite, text, debug layers)
-- [ ] Physics system bootstrap (Love2D Box2D world)
-- [ ] Physics-transform synchronization
-- [ ] Trigger system event dispatch
-- [ ] Script manager update loop integration
+- [x] Render system (background, sprite, text, debug layers)
+- [x] Physics system bootstrap (Love2D Box2D world)
+- [x] Physics-transform synchronization
+- [x] Trigger system event dispatch
+- [x] Script manager update loop integration
 
 ### 5. Scene Runtime Integration
-- [ ] Scene manager (`load`, `reload`, `unload`)
-- [ ] Camera defaults from scene JSON
-- [ ] Scene-level script execution support
-- [ ] Relative path resolution for assets/scripts
-- [ ] Runtime handling for unsupported object data
+- [x] Scene manager (`load`, `reload`, `unload`)
+- [x] Camera defaults from scene JSON
+- [x] Scene-level script execution support
+- [x] Relative path resolution for assets/scripts
+- [x] Runtime handling for unsupported object data
 
 ### 6. Input & Interaction Baseline
-- [ ] Centralized input router (keyboard/mouse)
-- [ ] Interact key flow for trigger events
-- [ ] Pause-safe update loop behavior
-- [ ] Basic scene switching hook
+- [x] Centralized input router (keyboard/mouse)
+- [x] Interact key flow for trigger events
+- [x] Pause-safe update loop behavior
+- [x] Basic scene switching hook
 
 ### 7. Asset & Script Infrastructure
-- [ ] Asset manager cache (images/fonts)
-- [ ] Script loader + protected execution (`pcall` wrappers)
-- [ ] Script hot-reload dev helper (optional in dev mode)
-- [ ] Missing-file fallback behavior (no hard crash)
+- [x] Asset manager cache (images/fonts)
+- [x] Script loader + protected execution (`pcall` wrappers)
+- [x] Script hot-reload dev helper (optional in dev mode)
+- [x] Missing-file fallback behavior (no hard crash)
 
 ### 8. Core Debug & Diagnostics
-- [ ] FPS/memory/object counters
-- [ ] Collider and trigger debug draw toggles
-- [ ] Text bounds debug overlay toggle
-- [ ] Runtime warnings panel/log stream
-- [ ] Per-scene load timing logs
+- [x] FPS/memory/object counters
+- [x] Collider and trigger debug draw toggles
+- [x] Text bounds debug overlay toggle
+- [x] Runtime warnings panel/log stream
+- [x] Per-scene load timing logs
 
 ### 9. Core QA Gates (Definition of Done)
 - [ ] Load 3+ sample scenes without runtime errors

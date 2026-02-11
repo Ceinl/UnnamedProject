@@ -1,6 +1,6 @@
 # Game Directory
 
-This directory will contain the Love2D game runtime that consumes the JSON files created by the editors.
+This directory contains the Love2D game runtime that consumes the JSON files created by the editors.
 
 ## Expected Structure
 
@@ -58,15 +58,30 @@ Game/
 
 ## Implementation Status
 
-The Love2D runtime needs to be implemented following the architecture in `../BEHAVIOR_LAYER_GUIDE.md`.
+Phase 1 runtime foundation is implemented:
+- Scene loading from `content/scenes/index.json`
+- Scene schema validation, defaults, and deterministic object load order
+- Object/component lifecycle (`init`, `update`, `draw`, `destroy`)
+- Core components: Transform, Sprite, Collider, Trigger, Script, Text
+- Core systems: Render, Physics, Trigger, Dialogue
+- Managers: Scene/Object/Asset/Script/State/Dialogue
+- Debug overlays and runtime diagnostics
 
-## Next Steps
+## Run
 
-1. Create directory structure
-2. Implement core managers (Game, Scene, Object, Script)
-3. Implement components (Transform, Sprite, Collider, Trigger, Script)
-4. Implement systems (Render, Physics, Trigger, Dialogue)
-5. Add utility classes
-6. Test with sample scene and dialogue
+```bash
+love Game
+```
+
+### Runtime Hotkeys
+- `F1` toggle stats/log HUD
+- `F2` toggle collider debug drawing
+- `F3` toggle trigger debug drawing
+- `F4` toggle text bounds overlay
+- `F5` reload current scene
+- `F6` reload cached scripts
+- `E` interact (trigger events)
+- `P` pause/unpause update loop
+- `[` / `]` switch scenes from index
 
 See `../BEHAVIOR_LAYER_GUIDE.md` for complete implementation details.
