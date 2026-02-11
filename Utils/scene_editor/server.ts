@@ -113,6 +113,7 @@ async function validateScene(scene: any, projectRoot: string | null) {
   }
 
   const idSet = new Set<string>();
+  const validObjectTypes = new Set(["prop", "trigger", "collider", "spawn", "light", "text"]);
   const validColliderShapes = new Set(["box", "circle", "polygon"]);
   const validTriggerEvents = new Set(["onEnter", "onExit", "onStay", "onInteract"]);
 
@@ -122,6 +123,9 @@ async function validateScene(scene: any, projectRoot: string | null) {
   for (const obj of scene.objects ?? []) {
     if (!obj?.id) errors.push("Object id is required");
     if (!obj?.type) errors.push(`Object ${obj?.id ?? "(unknown)"} type is required`);
+    if (obj?.type && !validObjectTypes.has(obj.type)) {
+      errors.push(`Invalid object type for ${obj?.id ?? "(unknown)"}: ${obj.type}`);
+    }
     if (!obj?.position || typeof obj.position.x !== "number" || typeof obj.position.y !== "number") {
       errors.push(`Object ${obj?.id ?? "(unknown)"} position is required`);
     }
@@ -143,6 +147,21 @@ async function validateScene(scene: any, projectRoot: string | null) {
     if (obj?.trigger) {
       if (!validTriggerEvents.has(obj.trigger.event)) {
         errors.push(`Invalid trigger event for ${obj?.id ?? "(unknown)"}`);
+      }
+    }
+
+    if (obj?.type === "text" && obj?.text) {
+      if (typeof obj.text.content !== "string") {
+        errors.push(`Text object ${obj?.id ?? "(unknown)"} content must be a string`);
+      }
+      if (obj.text.fontSize != null && typeof obj.text.fontSize !== "number") {
+        errors.push(`Text object ${obj?.id ?? "(unknown)"} fontSize must be a number`);
+      }
+      if (obj.text.lineHeight != null && typeof obj.text.lineHeight !== "number") {
+        errors.push(`Text object ${obj?.id ?? "(unknown)"} lineHeight must be a number`);
+      }
+      if (obj.text.align != null && !["left", "center", "right"].includes(obj.text.align)) {
+        errors.push(`Text object ${obj?.id ?? "(unknown)"} align must be left, center, or right`);
       }
     }
 
