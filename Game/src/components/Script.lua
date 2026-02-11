@@ -22,6 +22,9 @@ function Script:init()
     self.gameObject.game.logger:error("Failed to attach script '" .. tostring(self.scriptPath) .. "' to " .. self.gameObject.id .. ": " .. tostring(err))
     self.instance = nil
   else
+    -- Set up instance context for object-attached scripts
+    instance.gameObject = self.gameObject
+    instance.game = self.gameObject.game
     self.instance = instance
   end
 

@@ -134,6 +134,11 @@ end
 function Game:_get_interactor_object()
   local players = self.objectManager:findByTag("player")
   if #players > 0 then
+    for _, player in ipairs(players) do
+      if player.type ~= "spawn" then
+        return player
+      end
+    end
     return players[1]
   end
 
@@ -188,6 +193,15 @@ function Game:keypressed(key, _scancode, isrepeat)
   self.input.keysDown[key] = true
   self.input.keysPressed[key] = true
 
+  if self.dialogueManager and self.dialogueManager:handle_keypressed(key) then
+    return
+  end
+
+  -- Forward to scene scripts
+  for _, entry in ipairs(self.scriptManager.scene_scripts) do
+    self.scriptManager:safe_call(entry.instance, "keypressed", key, _scancode, isrepeat)
+  end
+
   if key == "f1" then
     self:_toggle_debug("showStats")
   elseif key == "f2" then
@@ -222,9 +236,17 @@ end
 
 function Game:keyreleased(key)
   self.input.keysDown[key] = nil
+
+  -- Forward to scene scripts
+  for _, entry in ipairs(self.scriptManager.scene_scripts) do
+    self.scriptManager:safe_call(entry.instance, "keyreleased", key)
+  end
 end
 
 function Game:mousepressed(x, y, button)
+  if self.dialogueManager and self.dialogueManager:handle_mousepressed(x, y, button) then
+    return
+  end
   self.events:emit("input:mousepressed", {
     x = x,
     y = y,
