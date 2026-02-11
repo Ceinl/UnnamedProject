@@ -35,21 +35,21 @@ clean:
 
 # ==================== DEV (for local development only) ====================
 
-# Run both editors (in background)
-dev:
+# Build and run both editors (in background)
+dev: build
 	@echo "Starting both editors..."
-	@make dev-scene &
-	@make dev-dialog &
+	@cd Utils/scene_editor && bun run server.ts &
+	@cd Utils/dialog_editor && bun run server.ts &
 	@echo "Scene Editor: http://localhost:5174"
 	@echo "Dialog Editor: http://localhost:5173"
 
-# Run Scene Editor dev server
-dev-scene:
+# Build and run Scene Editor dev server
+dev-scene: scene
 	@echo "Starting Scene Editor on http://localhost:5174"
 	@cd Utils/scene_editor && bun run server.ts
 
-# Run Dialog Editor dev server
-dev-dialog:
+# Build and run Dialog Editor dev server
+dev-dialog: dialog
 	@echo "Starting Dialog Editor on http://localhost:5173"
 	@cd Utils/dialog_editor && bun run server.ts
 
@@ -63,6 +63,6 @@ help:
 	@echo "  make clean    - Remove build outputs"
 	@echo ""
 	@echo "DEV tasks (for local development only):"
-	@echo "  make dev          - Run both editors"
-	@echo "  make dev-scene    - Run Scene Editor (port 5174)"
-	@echo "  make dev-dialog   - Run Dialog Editor (port 5173)"
+	@echo "  make dev          - Build and run both editors"
+	@echo "  make dev-scene    - Build and run Scene Editor (port 5174)"
+	@echo "  make dev-dialog   - Build and run Dialog Editor (port 5173)"
