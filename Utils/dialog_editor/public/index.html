@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dialogue Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&family=Unica+One&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div class="dock" id="dock">
+        <div class="dock-group">
+          <button class="dock-btn" data-panel="dialogsPanel">Dialogs</button>
+          <button class="dock-btn" data-panel="inspectorPanel">Inspector</button>
+          <button class="dock-btn" data-panel="graphSettingsPanel">Graph</button>
+        </div>
+        <div class="dock-group">
+          <button class="dock-btn" id="newDialogue">New</button>
+          <button class="dock-btn" id="saveDialogue">Save</button>
+        </div>
+        <div class="dock-group">
+          <button class="dock-btn" id="zoomOut">-</button>
+          <button class="dock-btn" id="zoomReset">100%</button>
+          <button class="dock-btn" id="zoomIn">+</button>
+        </div>
+        <div class="status-pill" id="statusText">Idle</div>
+      </div>
+
+      <div class="overlay" id="overlay"></div>
+
+      <main class="canvas-wrap">
+        <section class="graph-canvas">
+          <div id="graphView">
+            <svg id="graphEdges"></svg>
+            <div id="graphNodes"></div>
+          </div>
+        </section>
+      </main>
+
+      <section id="dialogsPanel" class="window">
+        <div class="window-header">
+          <div class="window-title">Dialogues</div>
+          <button class="window-close" data-close>Close</button>
+        </div>
+        <div class="window-body">
+          <div class="panel-title">Dialogues</div>
+          <div class="list" id="dialogueList"></div>
+          <div class="panel-title">Nodes</div>
+          <div class="list" id="nodeList"></div>
+        </div>
+      </section>
+
+      <section id="graphSettingsPanel" class="window">
+        <div class="window-header">
+          <div class="window-title">Graph Settings</div>
+          <button class="window-close" data-close>Close</button>
+        </div>
+        <div class="window-body" id="graphSettings"></div>
+      </section>
+
+      <section id="inspectorPanel" class="window">
+        <div class="window-header">
+          <div class="window-title">Node Inspector</div>
+          <button class="window-close" data-close>Close</button>
+        </div>
+        <div class="window-body" id="inspector"></div>
+      </section>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
