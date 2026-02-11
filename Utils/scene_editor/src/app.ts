@@ -1,6 +1,7 @@
 import type { AssetItem, GameObject, GameObjectType, Scene, SceneItem, ScriptItem, Vector2 } from "../types/scene";
 
-type ToolType = "select" | "pan" | "place-prop" | "place-collider" | "place-trigger" | "place-spawn";
+type ToolType = "select" | "pan" | "place-prop" | "place-collider" | "place-trigger" | "place-spawn" | "place-text";
+type HierarchyFilter = "all" | GameObjectType;
 
 type DragState =
   | {
@@ -34,6 +35,19 @@ type EditorState = {
   drag: DragState | null;
   dirty: boolean;
   panOverride: boolean;
+  pendingSelectId: string | null;
+  pendingClearSelection: boolean;
+  dragMoved: boolean;
+  pointerWorld: Vector2 | null;
+  hierarchySearch: string;
+  hierarchyFilter: HierarchyFilter;
+  ui: {
+    leftSidebarVisible: boolean;
+    rightSidebarVisible: boolean;
+    focusMode: boolean;
+    previousLeftSidebarVisible: boolean;
+    previousRightSidebarVisible: boolean;
+  };
 };
 
 const state: EditorState = {
@@ -54,10 +68,34 @@ const state: EditorState = {
   },
   drag: null,
   dirty: false,
-  panOverride: false
+  panOverride: false,
+  pendingSelectId: null,
+  pendingClearSelection: false,
+  dragMoved: false,
+  pointerWorld: null,
+  hierarchySearch: "",
+  hierarchyFilter: "all",
+  ui: {
+    leftSidebarVisible: true,
+    rightSidebarVisible: true,
+    focusMode: false,
+    previousLeftSidebarVisible: true,
+    previousRightSidebarVisible: true
+  }
 };
 
 const elements = {
+  workspace: document.getElementById("workspace") as HTMLDivElement,
+  leftSidebar: document.getElementById("leftSidebar") as HTMLDivElement,
+  rightSidebar: document.getElementById("rightSidebar") as HTMLDivElement,
+  canvasShell: document.querySelector(".canvas-shell") as HTMLDivElement,
+  canvasToolbar: document.getElementById("canvasToolbar") as HTMLDivElement,
+  canvasOverlay: document.getElementById("canvasOverlay") as HTMLDivElement,
+  showLeftSidebarButton: document.getElementById("showLeftSidebarButton") as HTMLButtonElement,
+  showRightSidebarButton: document.getElementById("showRightSidebarButton") as HTMLButtonElement,
+  toggleLeftSidebarButton: document.getElementById("toggleLeftSidebarButton") as HTMLButtonElement,
+  toggleRightSidebarButton: document.getElementById("toggleRightSidebarButton") as HTMLButtonElement,
+  toggleFocusModeButton: document.getElementById("toggleFocusModeButton") as HTMLButtonElement,
   projectSelector: document.getElementById("projectSelector") as HTMLDivElement,
   projectPathInput: document.getElementById("projectPathInput") as HTMLInputElement,
   projectSelectButton: document.getElementById("projectSelectButton") as HTMLButtonElement,
@@ -74,21 +112,34 @@ const elements = {
   createSceneButton: document.getElementById("createSceneButton") as HTMLButtonElement,
   cancelNewSceneButton: document.getElementById("cancelNewSceneButton") as HTMLButtonElement,
   addObjectButton: document.getElementById("addObjectButton") as HTMLButtonElement,
+  hierarchySearch: document.getElementById("hierarchySearch") as HTMLInputElement,
   hierarchyList: document.getElementById("hierarchyList") as HTMLDivElement,
+  objectCountBadge: document.getElementById("objectCountBadge") as HTMLSpanElement,
   inspectorPanel: document.getElementById("inspectorPanel") as HTMLDivElement,
   assetList: document.getElementById("assetList") as HTMLDivElement,
   scriptList: document.getElementById("scriptList") as HTMLDivElement,
   activeToolBadge: document.getElementById("activeToolBadge") as HTMLDivElement,
   activeAssetBadge: document.getElementById("activeAssetBadge") as HTMLDivElement,
+  snapStateBadge: document.getElementById("snapStateBadge") as HTMLDivElement,
+  toggleGridButton: document.getElementById("toggleGridButton") as HTMLButtonElement,
+  toggleSnapButton: document.getElementById("toggleSnapButton") as HTMLButtonElement,
+  gridSizeInput: document.getElementById("gridSizeInput") as HTMLInputElement,
+  zoomOutButton: document.getElementById("zoomOutButton") as HTMLButtonElement,
+  zoomInButton: document.getElementById("zoomInButton") as HTMLButtonElement,
+  focusSelectionButton: document.getElementById("focusSelectionButton") as HTMLButtonElement,
+  fitSceneButton: document.getElementById("fitSceneButton") as HTMLButtonElement,
   projectPathLabel: document.getElementById("projectPathLabel") as HTMLSpanElement,
   canvas: document.getElementById("sceneCanvas") as HTMLCanvasElement,
+  canvasContainer: document.querySelector(".canvas-container") as HTMLDivElement,
   coordinates: document.getElementById("coordinates") as HTMLSpanElement,
   zoomLevel: document.getElementById("zoomLevel") as HTMLSpanElement,
-  status: document.getElementById("status") as HTMLSpanElement
+  status: document.getElementById("status") as HTMLSpanElement,
+  statusBar: document.querySelector(".status-bar") as HTMLDivElement
 };
 
 const toolButtons = Array.from(document.querySelectorAll(".tool-button")) as HTMLButtonElement[];
 const tabButtons = Array.from(document.querySelectorAll(".tab")) as HTMLButtonElement[];
+const hierarchyFilterButtons = Array.from(document.querySelectorAll(".chip[data-filter]")) as HTMLButtonElement[];
 
 const ctx = elements.canvas.getContext("2d");
 if (!ctx) throw new Error("Canvas context unavailable");
@@ -131,12 +182,34 @@ function sanitizeId(value: string) {
     .slice(0, 64);
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
 function getScene() {
   return state.sceneData;
+}
+
+function getPlacementTypeFromTool(tool: ToolType): GameObjectType | null {
+  const typeMap: Record<ToolType, GameObjectType | null> = {
+    "place-prop": "prop",
+    "place-collider": "collider",
+    "place-trigger": "trigger",
+    "place-spawn": "spawn",
+    "place-text": "text",
+    select: null,
+    pan: null
+  };
+  return typeMap[tool];
 }
 
 function setActiveTool(tool: ToolType) {
@@ -150,9 +223,12 @@ function setActiveTool(tool: ToolType) {
     "place-prop": "Place Prop",
     "place-collider": "Place Collider",
     "place-trigger": "Place Trigger",
-    "place-spawn": "Place Spawn"
+    "place-spawn": "Place Spawn",
+    "place-text": "Place Text"
   };
   elements.activeToolBadge.textContent = labels[tool] ?? "Select";
+  elements.canvas.style.cursor = tool === "pan" ? "grab" : "crosshair";
+  renderScene();
 }
 
 function setActiveAsset(path: string | null) {
@@ -165,6 +241,73 @@ function setActiveAsset(path: string | null) {
 function setActiveScript(path: string | null) {
   state.activeScriptPath = path;
   updateScriptList();
+}
+
+function updateSceneControls() {
+  const scene = getScene();
+  if (!scene) {
+    elements.toggleGridButton.textContent = "Grid: Off";
+    elements.toggleSnapButton.textContent = "Snap: Off";
+    elements.snapStateBadge.textContent = "Snap: Off";
+    elements.gridSizeInput.value = "32";
+    return;
+  }
+  elements.toggleGridButton.textContent = scene.grid.enabled ? "Grid: On" : "Grid: Off";
+  elements.toggleSnapButton.textContent = scene.grid.snap ? "Snap: On" : "Snap: Off";
+  elements.snapStateBadge.textContent = scene.grid.snap ? "Snap: On" : "Snap: Off";
+  elements.gridSizeInput.value = `${scene.grid.size}`;
+}
+
+function updateUiVisibility() {
+  elements.workspace.classList.toggle("left-hidden", !state.ui.leftSidebarVisible);
+  elements.workspace.classList.toggle("right-hidden", !state.ui.rightSidebarVisible);
+  elements.canvasShell.classList.toggle("chrome-hidden", state.ui.focusMode);
+  elements.statusBar.classList.toggle("chrome-hidden", state.ui.focusMode);
+
+  elements.showLeftSidebarButton.classList.toggle("hidden", state.ui.leftSidebarVisible);
+  elements.showRightSidebarButton.classList.toggle("hidden", state.ui.rightSidebarVisible);
+
+  elements.toggleLeftSidebarButton.classList.toggle("is-active", state.ui.leftSidebarVisible);
+  elements.toggleRightSidebarButton.classList.toggle("is-active", state.ui.rightSidebarVisible);
+  elements.toggleFocusModeButton.classList.toggle("is-active", state.ui.focusMode);
+
+  elements.toggleLeftSidebarButton.textContent = state.ui.leftSidebarVisible ? "Left" : "Left Off";
+  elements.toggleRightSidebarButton.textContent = state.ui.rightSidebarVisible ? "Right" : "Right Off";
+  elements.toggleFocusModeButton.textContent = state.ui.focusMode ? "Focus On" : "Focus";
+}
+
+function setLeftSidebarVisible(value: boolean) {
+  if (value && state.ui.focusMode) {
+    state.ui.focusMode = false;
+  }
+  state.ui.leftSidebarVisible = value;
+  updateUiVisibility();
+  resizeCanvas();
+}
+
+function setRightSidebarVisible(value: boolean) {
+  if (value && state.ui.focusMode) {
+    state.ui.focusMode = false;
+  }
+  state.ui.rightSidebarVisible = value;
+  updateUiVisibility();
+  resizeCanvas();
+}
+
+function toggleFocusMode() {
+  if (!state.ui.focusMode) {
+    state.ui.previousLeftSidebarVisible = state.ui.leftSidebarVisible;
+    state.ui.previousRightSidebarVisible = state.ui.rightSidebarVisible;
+    state.ui.leftSidebarVisible = false;
+    state.ui.rightSidebarVisible = false;
+    state.ui.focusMode = true;
+  } else {
+    state.ui.leftSidebarVisible = state.ui.previousLeftSidebarVisible;
+    state.ui.rightSidebarVisible = state.ui.previousRightSidebarVisible;
+    state.ui.focusMode = false;
+  }
+  updateUiVisibility();
+  resizeCanvas();
 }
 
 function getImageUrl(relativePath: string) {
@@ -182,6 +325,7 @@ function loadImage(relativePath: string) {
 
 function resizeCanvas() {
   const rect = elements.canvas.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return;
   const dpr = devicePixelRatio || 1;
   elements.canvas.width = Math.floor(rect.width * dpr);
   elements.canvas.height = Math.floor(rect.height * dpr);
@@ -205,18 +349,51 @@ function getViewBounds() {
   return { left, top, right, bottom };
 }
 
+function getSnappedWorldPosition(point: Vector2, scene: Scene) {
+  if (!scene.grid.snap || !scene.grid.size) return point;
+  return {
+    x: snapPosition(point.x, scene.grid.size),
+    y: snapPosition(point.y, scene.grid.size)
+  };
+}
+
+function getToolColor(type: GameObjectType) {
+  const colors: Record<GameObjectType, string> = {
+    prop: "rgba(77, 177, 164, 0.9)",
+    collider: "rgba(240, 181, 92, 0.9)",
+    trigger: "rgba(203, 134, 99, 0.9)",
+    spawn: "rgba(141, 191, 113, 0.9)",
+    light: "rgba(240, 181, 92, 0.9)",
+    text: "rgba(138, 175, 255, 0.92)"
+  };
+  return colors[type];
+}
+
+function getToolFillColor(type: GameObjectType) {
+  const colors: Record<GameObjectType, string> = {
+    prop: "rgba(77, 177, 164, 0.2)",
+    collider: "rgba(240, 181, 92, 0.2)",
+    trigger: "rgba(203, 134, 99, 0.2)",
+    spawn: "rgba(141, 191, 113, 0.2)",
+    light: "rgba(240, 181, 92, 0.2)",
+    text: "rgba(138, 175, 255, 0.2)"
+  };
+  return colors[type];
+}
+
 function drawGrid(scene: Scene) {
-  if (!scene.grid.enabled) return;
+  if (!scene.grid.enabled || scene.grid.size < 4) return;
   const { left, top, right, bottom } = getViewBounds();
   const gridSize = scene.grid.size;
+  const majorStep = gridSize * 4;
   ctx.save();
-  ctx.strokeStyle = scene.grid.color;
-  ctx.globalAlpha = scene.grid.opacity;
   ctx.lineWidth = 1 / state.camera.zoom;
 
   const startX = Math.floor(left / gridSize) * gridSize;
   const startY = Math.floor(top / gridSize) * gridSize;
 
+  ctx.strokeStyle = scene.grid.color;
+  ctx.globalAlpha = clamp(scene.grid.opacity * 0.55, 0, 1);
   for (let x = startX; x <= right; x += gridSize) {
     ctx.beginPath();
     ctx.moveTo(x, top);
@@ -229,6 +406,109 @@ function drawGrid(scene: Scene) {
     ctx.lineTo(right, y);
     ctx.stroke();
   }
+
+  ctx.strokeStyle = "rgba(233, 241, 255, 0.2)";
+  ctx.globalAlpha = clamp(scene.grid.opacity * 0.75, 0, 1);
+  const majorStartX = Math.floor(left / majorStep) * majorStep;
+  const majorStartY = Math.floor(top / majorStep) * majorStep;
+  for (let x = majorStartX; x <= right; x += majorStep) {
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+  }
+  for (let y = majorStartY; y <= bottom; y += majorStep) {
+    ctx.beginPath();
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "rgba(136, 164, 198, 0.35)";
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 1.5 / state.camera.zoom;
+  ctx.beginPath();
+  ctx.moveTo(0, top);
+  ctx.lineTo(0, bottom);
+  ctx.moveTo(left, 0);
+  ctx.lineTo(right, 0);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawSceneBounds(scene: Scene) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(236, 242, 255, 0.42)";
+  ctx.lineWidth = 2 / state.camera.zoom;
+  ctx.strokeRect(0, 0, scene.size.width, scene.size.height);
+  ctx.fillStyle = "rgba(245, 160, 95, 0.08)";
+  ctx.fillRect(0, 0, scene.size.width, scene.size.height);
+  ctx.restore();
+}
+
+function drawWrappedText(text: string, maxWidth: number, lineHeight: number) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  if (!words.length) {
+    lines.push("");
+  } else {
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (ctx.measureText(candidate).width <= maxWidth || !current) {
+        current = candidate;
+      } else {
+        lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+  }
+
+  const totalHeight = Math.max(lineHeight, lines.length * lineHeight);
+  const startY = -totalHeight / 2 + lineHeight / 2;
+  for (let i = 0; i < lines.length; i += 1) {
+    ctx.fillText(lines[i], 0, startY + i * lineHeight, maxWidth);
+  }
+}
+
+function drawPlacementPreview(scene: Scene) {
+  const placementType = getPlacementTypeFromTool(state.activeTool);
+  if (!placementType || !state.pointerWorld) return;
+  const previewPosition = getSnappedWorldPosition(state.pointerWorld, scene);
+  let width = 64;
+  let height = 64;
+  if (placementType === "text") {
+    width = 320;
+    height = 96;
+  }
+  if (placementType === "prop" && state.activeAssetPath) {
+    const asset = assetLookup.get(state.activeAssetPath);
+    if (asset?.size?.width && asset?.size?.height) {
+      width = asset.size.width;
+      height = asset.size.height;
+    }
+  }
+  const halfW = width / 2;
+  const halfH = height / 2;
+
+  ctx.save();
+  ctx.translate(previewPosition.x, previewPosition.y);
+  ctx.fillStyle = getToolFillColor(placementType);
+  ctx.strokeStyle = getToolColor(placementType);
+  ctx.lineWidth = 2 / state.camera.zoom;
+  ctx.setLineDash([8 / state.camera.zoom, 6 / state.camera.zoom]);
+  ctx.fillRect(-halfW, -halfH, width, height);
+  ctx.strokeRect(-halfW, -halfH, width, height);
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(-10 / state.camera.zoom, 0);
+  ctx.lineTo(10 / state.camera.zoom, 0);
+  ctx.moveTo(0, -10 / state.camera.zoom);
+  ctx.lineTo(0, 10 / state.camera.zoom);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -259,6 +539,7 @@ function renderScene() {
     }
   }
 
+  drawSceneBounds(scene);
   drawGrid(scene);
 
   const objects = [...scene.objects].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
@@ -276,7 +557,25 @@ function renderScene() {
     const halfW = drawW / 2;
     const halfH = drawH / 2;
 
-    if (obj.sprite) {
+    if (obj.type === "text") {
+      const textSettings = obj.text ?? { content: "Text" };
+      const fontSize = Math.max(8, textSettings.fontSize ?? 36);
+      const fontFamily = textSettings.fontFamily ?? "Spline Sans, sans-serif";
+      const fontWeight = 600;
+      const lineHeight = Math.max(10, textSettings.lineHeight ?? Math.round(fontSize * 1.2));
+      const align = textSettings.align ?? "center";
+      const content = (textSettings.content ?? "").trim() || obj.name?.trim() || "Text";
+
+      ctx.textBaseline = "middle";
+      ctx.textAlign = align;
+      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = obj.color ?? "#e8ecff";
+
+      const textX = align === "left" ? -halfW : align === "right" ? halfW : 0;
+      ctx.translate(textX, 0);
+      drawWrappedText(content, Math.max(32, drawW), lineHeight);
+      ctx.translate(-textX, 0);
+    } else if (obj.sprite) {
       const image = loadImage(obj.sprite);
       if (image.complete && image.naturalWidth) {
         ctx.drawImage(image, -halfW, -halfH, drawW, drawH);
@@ -296,14 +595,23 @@ function renderScene() {
     }
 
     if (obj.id === state.selectedObjectId) {
-      ctx.strokeStyle = "rgba(77, 157, 142, 0.9)";
+      ctx.strokeStyle = "rgba(77, 177, 164, 0.95)";
       ctx.lineWidth = 2 / state.camera.zoom;
       ctx.strokeRect(-halfW, -halfH, drawW, drawH);
+      ctx.strokeStyle = "rgba(240, 181, 92, 0.9)";
+      ctx.lineWidth = 1.5 / state.camera.zoom;
+      ctx.beginPath();
+      ctx.moveTo(-halfW, 0);
+      ctx.lineTo(halfW, 0);
+      ctx.moveTo(0, -halfH);
+      ctx.lineTo(0, halfH);
+      ctx.stroke();
     }
 
     ctx.restore();
   }
 
+  drawPlacementPreview(scene);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
@@ -382,9 +690,11 @@ async function loadScenes() {
     state.currentSceneId = null;
     state.sceneData = null;
     elements.sceneName.textContent = "No scene loaded";
+    state.pointerWorld = null;
     renderScene();
     updateHierarchy();
     updateInspector();
+    updateSceneControls();
     return;
   }
 
@@ -405,11 +715,13 @@ async function loadScene(sceneId: string) {
   state.currentSceneId = result.id;
   state.sceneData = result.data;
   state.selectedObjectId = null;
+  state.pointerWorld = null;
   state.camera.position = result.data.camera?.defaultPosition ?? { x: 0, y: 0 };
   state.camera.zoom = result.data.camera?.defaultZoom ?? 1;
   elements.sceneSelect.value = sceneId;
   elements.sceneName.textContent = result.data.name ?? result.id;
   updateZoomLabel();
+  updateSceneControls();
   updateHierarchy();
   updateInspector();
   renderScene();
@@ -465,7 +777,7 @@ function createEmptyScene(id: string, name: string, width: number, height: numbe
       defaultZoom: 1
     },
     objects: [],
-    layers: ["Background", "Props", "Triggers", "Spawns"],
+    layers: ["Background", "Props", "Text", "Triggers", "Spawns"],
     scripts: [],
     version: "1.0.0",
     lastModified: new Date().toISOString()
@@ -503,25 +815,72 @@ function updateZoomLabel() {
   elements.zoomLevel.textContent = `${Math.round(state.camera.zoom * 100)}%`;
 }
 
+function updateObjectCountBadge(count: number) {
+  const label = count === 1 ? "1 object" : `${count} objects`;
+  elements.objectCountBadge.textContent = label;
+}
+
+function getHierarchyObjects(scene: Scene) {
+  const query = state.hierarchySearch.trim().toLowerCase();
+  return [...scene.objects]
+    .filter((obj) => (state.hierarchyFilter === "all" ? true : obj.type === state.hierarchyFilter))
+    .filter((obj) => {
+      if (!query) return true;
+      const haystack = `${obj.id} ${obj.name ?? ""} ${obj.type}`.toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((a, b) => {
+      const az = a.zIndex ?? 0;
+      const bz = b.zIndex ?? 0;
+      if (az !== bz) return bz - az;
+      return (a.name ?? a.id).localeCompare(b.name ?? b.id);
+    });
+}
+
+function setHierarchyFilter(filter: HierarchyFilter) {
+  state.hierarchyFilter = filter;
+  hierarchyFilterButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.filter === filter);
+  });
+  updateHierarchy();
+}
+
 function updateHierarchy() {
   const scene = getScene();
   if (!scene) {
     elements.hierarchyList.textContent = "No scene loaded.";
+    updateObjectCountBadge(0);
     return;
   }
+  updateObjectCountBadge(scene.objects.length);
   if (!scene.objects.length) {
     elements.hierarchyList.textContent = "No objects yet.";
     return;
   }
 
+  const filtered = getHierarchyObjects(scene);
+  if (!filtered.length) {
+    elements.hierarchyList.textContent = "No objects match the filter.";
+    return;
+  }
+
   elements.hierarchyList.innerHTML = "";
-  const sorted = [...scene.objects].sort((a, b) => a.name?.localeCompare(b.name ?? "") ?? 0);
-  for (const obj of sorted) {
+  for (const obj of filtered) {
     const item = document.createElement("button");
     item.className = "list-item";
     if (obj.id === state.selectedObjectId) item.classList.add("is-active");
     item.dataset.id = obj.id;
-    item.innerHTML = `${obj.name ?? obj.id} <span>${obj.type}</span>`;
+    const body = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = obj.name?.trim() || obj.id;
+    const subtitle = document.createElement("small");
+    subtitle.textContent = obj.id;
+    body.appendChild(title);
+    body.appendChild(subtitle);
+    const type = document.createElement("span");
+    type.textContent = obj.type;
+    item.appendChild(body);
+    item.appendChild(type);
     item.addEventListener("click", () => selectObject(obj.id));
     elements.hierarchyList.appendChild(item);
   }
@@ -601,7 +960,9 @@ function applyInputValue(input: HTMLInputElement | HTMLSelectElement | HTMLTextA
   } else if (field === "tags") {
     setObjectValue(obj, field, parseTags(input.value));
   } else if (input instanceof HTMLInputElement && input.type === "number") {
-    const value = Number(input.value);
+    let value = Number(input.value);
+    if (field === "text.fontSize") value = clamp(Math.round(value), 8, 256);
+    if (field === "text.lineHeight") value = clamp(Math.round(value), 8, 512);
     if (!Number.isNaN(value)) setObjectValue(obj, field, value);
   } else if (input instanceof HTMLTextAreaElement && field === "scriptParams") {
     try {
@@ -621,6 +982,18 @@ function applyInputValue(input: HTMLInputElement | HTMLSelectElement | HTMLTextA
     if (obj.type === "collider" && !obj.collider) {
       obj.collider = { shape: "box", offset: { x: 0, y: 0 }, isStatic: true, isTrigger: false };
     }
+    if (obj.type === "text" && !obj.text) {
+      obj.text = {
+        content: obj.name?.trim() || "Text",
+        fontFamily: "Spline Sans, sans-serif",
+        fontSize: 36,
+        align: "center",
+        lineHeight: 44
+      };
+      if (!obj.color) obj.color = "#e8ecff";
+      obj.sprite = undefined;
+    }
+    updateInspector();
   }
   markDirty();
   updateHierarchy();
@@ -645,7 +1018,15 @@ function applySceneInputValue(input: HTMLInputElement | HTMLSelectElement, scene
   if (input instanceof HTMLInputElement && input.type === "checkbox") {
     setSceneValue(scene, field, input.checked);
   } else if (input instanceof HTMLInputElement && input.type === "number") {
-    const value = Number(input.value);
+    let value = Number(input.value);
+    if (field === "scene.grid.size") {
+      value = clamp(Math.round(value), 4, 256);
+      input.value = `${value}`;
+    }
+    if (field === "scene.grid.opacity") {
+      value = clamp(value, 0, 1);
+      input.value = `${value}`;
+    }
     if (!Number.isNaN(value)) setSceneValue(scene, field, value);
   } else {
     setSceneValue(scene, field, input.value);
@@ -655,6 +1036,7 @@ function applySceneInputValue(input: HTMLInputElement | HTMLSelectElement, scene
     const option = elements.sceneSelect.querySelector(`option[value="${scene.id}"]`);
     if (option) option.textContent = input.value || scene.id;
   }
+  updateSceneControls();
   markDirty();
   renderScene();
 }
@@ -748,6 +1130,16 @@ function updateInspector() {
   }
 
   elements.inspectorPanel.classList.remove("muted");
+  const textSettings = obj.text ?? {
+    content: "",
+    fontFamily: "Spline Sans, sans-serif",
+    fontSize: 36,
+    align: "center" as const,
+    lineHeight: 44
+  };
+  const textContentEscaped = escapeHtml(textSettings.content ?? "");
+  const textFontEscaped = escapeHtml(textSettings.fontFamily ?? "Spline Sans, sans-serif");
+
   elements.inspectorPanel.innerHTML = `
     <div class="inspector-section">
       <h3>Identity</h3>
@@ -762,7 +1154,7 @@ function updateInspector() {
       <div class="field">
         <label>Type</label>
         <select data-field="type">
-          ${["prop", "collider", "trigger", "spawn", "light"].map((type) => `
+          ${["prop", "collider", "trigger", "spawn", "light", "text"].map((type) => `
             <option value="${type}" ${obj.type === type ? "selected" : ""}>${type}</option>
           `).join("")}
         </select>
@@ -817,6 +1209,7 @@ function updateInspector() {
     </div>
     <div class="inspector-section">
       <h3>Visual</h3>
+      ${obj.type !== "text" ? `
       <div class="field">
         <label>Sprite</label>
         <input type="text" data-field="sprite" value="${obj.sprite ?? ""}" />
@@ -825,10 +1218,11 @@ function updateInspector() {
         <button data-action="use-asset" class="ghost">Use Active Asset</button>
         <button data-action="clear-sprite" class="ghost">Clear</button>
       </div>
+      ` : ""}
       <div class="field-row">
         <div class="field">
           <label>Color</label>
-          <input type="color" data-field="color" value="${obj.color ?? "#4d9d8e"}" />
+          <input type="color" data-field="color" value="${obj.color ?? "#e8ecff"}" />
         </div>
         <div class="field">
           <label>Opacity</label>
@@ -836,6 +1230,37 @@ function updateInspector() {
         </div>
       </div>
     </div>
+    ${obj.type === "text" ? `
+    <div class="inspector-section">
+      <h3>Text</h3>
+      <div class="field">
+        <label>Content</label>
+        <textarea data-field="text.content">${textContentEscaped}</textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Font Size</label>
+          <input type="number" min="8" max="256" data-field="text.fontSize" value="${textSettings.fontSize ?? 36}" />
+        </div>
+        <div class="field">
+          <label>Line Height</label>
+          <input type="number" min="8" max="512" data-field="text.lineHeight" value="${textSettings.lineHeight ?? 44}" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Font Family</label>
+        <input type="text" data-field="text.fontFamily" value="${textFontEscaped}" />
+      </div>
+      <div class="field">
+        <label>Alignment</label>
+        <select data-field="text.align">
+          ${["left", "center", "right"].map((align) => `
+            <option value="${align}" ${textSettings.align === align ? "selected" : ""}>${align}</option>
+          `).join("")}
+        </select>
+      </div>
+    </div>
+    ` : ""}
     <div class="inspector-section">
       <h3>Collider</h3>
       <label class="field">
@@ -1090,6 +1515,17 @@ function createObject(type: GameObjectType, position: Vector2): GameObject {
   if (type === "spawn") {
     base.color = "#7ea05d";
   }
+  if (type === "text") {
+    base.color = "#e8ecff";
+    base.size = { width: 320, height: 96 };
+    base.text = {
+      content: "Text",
+      fontFamily: "Spline Sans, sans-serif",
+      fontSize: 36,
+      align: "center",
+      lineHeight: 44
+    };
+  }
 
   if (state.activeAssetPath && type === "prop") {
     base.sprite = state.activeAssetPath;
@@ -1106,6 +1542,8 @@ function addObjectAt(position: Vector2, type: GameObjectType) {
   const scene = getScene();
   if (!scene) return;
   const obj = createObject(type, position);
+  const maxZ = scene.objects.reduce((max, item) => Math.max(max, item.zIndex ?? 0), 0);
+  obj.zIndex = maxZ + 1;
   scene.objects.push(obj);
   selectObject(obj.id);
   markDirty();
@@ -1139,47 +1577,117 @@ function getObjectAt(world: Vector2) {
   return null;
 }
 
-function handleCanvasMouseDown(event: MouseEvent) {
+function getCanvasScreenPoint(event: MouseEvent | WheelEvent) {
   const rect = elements.canvas.getBoundingClientRect();
-  const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+function zoomCamera(delta: number, screenPoint?: Vector2) {
+  const rect = elements.canvas.getBoundingClientRect();
+  const point = screenPoint ?? { x: rect.width / 2, y: rect.height / 2 };
+  const before = screenToWorld(point);
+  state.camera.zoom = clamp(state.camera.zoom + delta, CANVAS.minZoom, CANVAS.maxZoom);
+  const after = screenToWorld(point);
+  state.camera.position.x += before.x - after.x;
+  state.camera.position.y += before.y - after.y;
+  updateZoomLabel();
+  renderScene();
+}
+
+function fitSceneToViewport() {
+  const scene = getScene();
+  if (!scene) return;
+  const rect = elements.canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const padding = 80;
+  const zoomX = (rect.width - padding) / scene.size.width;
+  const zoomY = (rect.height - padding) / scene.size.height;
+  state.camera.zoom = clamp(Math.min(zoomX, zoomY), CANVAS.minZoom, CANVAS.maxZoom);
+  state.camera.position.x = scene.size.width / 2 - rect.width / (2 * state.camera.zoom);
+  state.camera.position.y = scene.size.height / 2 - rect.height / (2 * state.camera.zoom);
+  updateZoomLabel();
+  renderScene();
+}
+
+function focusSelection() {
+  const scene = getScene();
+  const selected = getSelectedObject();
+  if (!scene || !selected) {
+    setStatus("Select an object to focus");
+    return;
+  }
+  const rect = elements.canvas.getBoundingClientRect();
+  state.camera.position.x = selected.position.x - rect.width / (2 * state.camera.zoom);
+  state.camera.position.y = selected.position.y - rect.height / (2 * state.camera.zoom);
+  renderScene();
+}
+
+function setGridSize(value: number) {
+  const scene = getScene();
+  if (!scene) return;
+  const next = clamp(Math.round(value), 4, 256);
+  scene.grid.size = next;
+  markDirty();
+  updateSceneControls();
+  if (!state.selectedObjectId) updateInspector();
+  renderScene();
+}
+
+function toggleGrid() {
+  const scene = getScene();
+  if (!scene) return;
+  scene.grid.enabled = !scene.grid.enabled;
+  markDirty();
+  updateSceneControls();
+  if (!state.selectedObjectId) updateInspector();
+  renderScene();
+}
+
+function toggleSnap() {
+  const scene = getScene();
+  if (!scene) return;
+  scene.grid.snap = !scene.grid.snap;
+  markDirty();
+  updateSceneControls();
+  if (!state.selectedObjectId) updateInspector();
+  renderScene();
+}
+
+function handleCanvasMouseDown(event: MouseEvent) {
+  const screen = getCanvasScreenPoint(event);
   const world = screenToWorld(screen);
 
   const isPanButton = event.button === 1 || event.button === 2;
   if (state.panOverride || isPanButton) {
+    elements.canvas.style.cursor = "grabbing";
     state.drag = {
       mode: "pan",
       start: screen,
       originCamera: { ...state.camera.position }
     };
+    state.pendingSelectId = null;
+    state.pendingClearSelection = false;
+    state.dragMoved = false;
     return;
   }
 
   if (event.button !== 0) return;
 
   const hit = getObjectAt(world);
-  const isPlaceTool = state.activeTool.startsWith("place");
+  const placementType = getPlacementTypeFromTool(state.activeTool);
 
-  if (isPlaceTool && !hit) {
-    const typeMap: Record<ToolType, GameObjectType> = {
-      "place-prop": "prop",
-      "place-collider": "collider",
-      "place-trigger": "trigger",
-      "place-spawn": "spawn",
-      select: "prop",
-      pan: "prop"
-    };
+  if (placementType && !event.altKey) {
     const scene = getScene();
     if (!scene) return;
-    const snapped = scene.grid.snap
-      ? { x: snapPosition(world.x, scene.grid.size), y: snapPosition(world.y, scene.grid.size) }
-      : world;
-    addObjectAt(snapped, typeMap[state.activeTool]);
+    const snapped = getSnappedWorldPosition(world, scene);
+    addObjectAt(snapped, placementType);
     if (!event.shiftKey) setActiveTool("select");
     return;
   }
   if (hit) {
-    selectObject(hit.id);
-    if (isPlaceTool) setActiveTool("select");
+    state.pendingSelectId = hit.id;
+    state.pendingClearSelection = false;
+    state.dragMoved = false;
     if (!hit.locked) {
       state.drag = {
         mode: "move",
@@ -1189,15 +1697,27 @@ function handleCanvasMouseDown(event: MouseEvent) {
       };
     }
   } else {
-    selectObject(null);
+    state.pendingSelectId = null;
+    state.pendingClearSelection = true;
+    state.dragMoved = false;
   }
 }
 
 function handleCanvasMouseMove(event: MouseEvent) {
-  const rect = elements.canvas.getBoundingClientRect();
-  const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  const screen = getCanvasScreenPoint(event);
   const world = screenToWorld(screen);
-  elements.coordinates.textContent = `X: ${Math.round(world.x)}, Y: ${Math.round(world.y)}`;
+  state.pointerWorld = world;
+  const scene = getScene();
+  const placementType = getPlacementTypeFromTool(state.activeTool);
+  if (scene && placementType && scene.grid.snap) {
+    const snapped = getSnappedWorldPosition(world, scene);
+    elements.coordinates.textContent = `X: ${Math.round(snapped.x)}, Y: ${Math.round(snapped.y)} (snap)`;
+  } else {
+    elements.coordinates.textContent = `X: ${Math.round(world.x)}, Y: ${Math.round(world.y)}`;
+  }
+  if (!state.drag) {
+    renderScene();
+  }
 
   if (!state.drag) return;
 
@@ -1215,6 +1735,8 @@ function handleCanvasMouseMove(event: MouseEvent) {
     if (!scene) return;
     const obj = scene.objects.find((item) => item.id === state.drag?.objectId);
     if (!obj) return;
+    const distance = Math.hypot(screen.x - state.drag.start.x, screen.y - state.drag.start.y);
+    if (distance > 3) state.dragMoved = true;
     const dx = (screen.x - state.drag.start.x) / state.camera.zoom;
     const dy = (screen.y - state.drag.start.y) / state.camera.zoom;
     let nextX = state.drag.origin.x + dx;
@@ -1226,26 +1748,38 @@ function handleCanvasMouseMove(event: MouseEvent) {
     obj.position.x = nextX;
     obj.position.y = nextY;
     markDirty();
-    updateInspector();
+    if (state.selectedObjectId === obj.id) {
+      updateInspector();
+    }
     renderScene();
   }
 }
 
 function handleCanvasMouseUp() {
+  const pendingId = state.pendingSelectId;
+  const shouldClear = state.pendingClearSelection;
+  const moved = state.dragMoved;
   state.drag = null;
+  state.pendingSelectId = null;
+  state.pendingClearSelection = false;
+  state.dragMoved = false;
+  if (pendingId && !moved) {
+    selectObject(pendingId);
+  } else if (shouldClear && !moved) {
+    selectObject(null);
+  }
+  elements.canvas.style.cursor = state.activeTool === "pan" ? "grab" : "crosshair";
 }
 
 function handleCanvasWheel(event: WheelEvent) {
   event.preventDefault();
-  const rect = elements.canvas.getBoundingClientRect();
-  const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-  const before = screenToWorld(screen);
   const delta = event.deltaY > 0 ? -CANVAS.zoomStep : CANVAS.zoomStep;
-  state.camera.zoom = clamp(state.camera.zoom + delta, CANVAS.minZoom, CANVAS.maxZoom);
-  const after = screenToWorld(screen);
-  state.camera.position.x += before.x - after.x;
-  state.camera.position.y += before.y - after.y;
-  updateZoomLabel();
+  zoomCamera(delta, getCanvasScreenPoint(event));
+}
+
+function handleCanvasMouseLeave() {
+  state.pointerWorld = null;
+  handleCanvasMouseUp();
   renderScene();
 }
 
@@ -1257,7 +1791,7 @@ function addObjectFromButton() {
     x: (left + right) / 2,
     y: (top + bottom) / 2
   };
-  addObjectAt(center, "prop");
+  addObjectAt(getSnappedWorldPosition(center, scene), "prop");
 }
 
 function handleTabs(tab: string) {
@@ -1271,6 +1805,7 @@ function handleShortcuts(event: KeyboardEvent) {
   if (event.code === "Space") {
     event.preventDefault();
     state.panOverride = true;
+    elements.canvas.style.cursor = "grab";
   }
   if (event.key.toLowerCase() === "v") setActiveTool("select");
   if (event.key.toLowerCase() === "m") setActiveTool("pan");
@@ -1278,6 +1813,20 @@ function handleShortcuts(event: KeyboardEvent) {
   if (event.key === "2") setActiveTool("place-collider");
   if (event.key === "3") setActiveTool("place-trigger");
   if (event.key === "4") setActiveTool("place-spawn");
+  if (event.key === "5") setActiveTool("place-text");
+  if ((event.key === "+" || event.key === "=") && !event.metaKey && !event.ctrlKey) {
+    event.preventDefault();
+    zoomCamera(CANVAS.zoomStep);
+  }
+  if ((event.key === "-" || event.key === "_") && !event.metaKey && !event.ctrlKey) {
+    event.preventDefault();
+    zoomCamera(-CANVAS.zoomStep);
+  }
+  if (event.key === "[") setLeftSidebarVisible(!state.ui.leftSidebarVisible);
+  if (event.key === "]") setRightSidebarVisible(!state.ui.rightSidebarVisible);
+  if (event.key === "\\") toggleFocusMode();
+  if (event.key.toLowerCase() === "f") focusSelection();
+  if (event.key.toLowerCase() === "g") toggleGrid();
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
     event.preventDefault();
     void saveScene();
@@ -1287,6 +1836,7 @@ function handleShortcuts(event: KeyboardEvent) {
 function handleKeyUp(event: KeyboardEvent) {
   if (event.code === "Space") {
     state.panOverride = false;
+    elements.canvas.style.cursor = state.activeTool === "pan" ? "grab" : "crosshair";
   }
 }
 
@@ -1300,6 +1850,31 @@ elements.newSceneButton.addEventListener("click", openNewSceneModal);
 elements.cancelNewSceneButton.addEventListener("click", closeNewSceneModal);
 elements.createSceneButton.addEventListener("click", () => void createScene());
 elements.addObjectButton.addEventListener("click", addObjectFromButton);
+elements.toggleLeftSidebarButton.addEventListener("click", () => setLeftSidebarVisible(!state.ui.leftSidebarVisible));
+elements.toggleRightSidebarButton.addEventListener("click", () => setRightSidebarVisible(!state.ui.rightSidebarVisible));
+elements.toggleFocusModeButton.addEventListener("click", toggleFocusMode);
+elements.showLeftSidebarButton.addEventListener("click", () => setLeftSidebarVisible(true));
+elements.showRightSidebarButton.addEventListener("click", () => setRightSidebarVisible(true));
+elements.toggleGridButton.addEventListener("click", toggleGrid);
+elements.toggleSnapButton.addEventListener("click", toggleSnap);
+elements.zoomOutButton.addEventListener("click", () => zoomCamera(-CANVAS.zoomStep));
+elements.zoomInButton.addEventListener("click", () => zoomCamera(CANVAS.zoomStep));
+elements.focusSelectionButton.addEventListener("click", focusSelection);
+elements.fitSceneButton.addEventListener("click", fitSceneToViewport);
+elements.gridSizeInput.addEventListener("change", () => {
+  setGridSize(Number(elements.gridSizeInput.value));
+});
+elements.hierarchySearch.addEventListener("input", () => {
+  state.hierarchySearch = elements.hierarchySearch.value;
+  updateHierarchy();
+});
+
+hierarchyFilterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const filter = (button.dataset.filter ?? "all") as HierarchyFilter;
+    setHierarchyFilter(filter);
+  });
+});
 
 toolButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -1318,13 +1893,20 @@ tabButtons.forEach((button) => {
 elements.canvas.addEventListener("mousedown", handleCanvasMouseDown);
 elements.canvas.addEventListener("mousemove", handleCanvasMouseMove);
 elements.canvas.addEventListener("mouseup", handleCanvasMouseUp);
-elements.canvas.addEventListener("mouseleave", handleCanvasMouseUp);
+elements.canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
 elements.canvas.addEventListener("wheel", handleCanvasWheel, { passive: false });
 
 window.addEventListener("keydown", handleShortcuts);
 window.addEventListener("keyup", handleKeyUp);
 window.addEventListener("resize", resizeCanvas);
+if ("ResizeObserver" in window && elements.canvasContainer) {
+  const observer = new ResizeObserver(() => resizeCanvas());
+  observer.observe(elements.canvasContainer);
+}
 elements.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 resizeCanvas();
 handleTabs("images");
+setHierarchyFilter("all");
+updateSceneControls();
+updateUiVisibility();
 void loadProject();
