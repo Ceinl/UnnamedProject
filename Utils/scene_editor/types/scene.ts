@@ -8,7 +8,7 @@ export type Vector2Size = {
   height: number;
 };
 
-export type GameObjectType = "prop" | "trigger" | "collider" | "spawn" | "light";
+export type GameObjectType = "prop" | "trigger" | "collider" | "spawn" | "light" | "text";
 
 export type ColliderShape = "box" | "circle" | "polygon";
 
@@ -36,6 +36,13 @@ export type GameObject = {
     action?: string;
     cooldown?: number;
     oneShot: boolean;
+  };
+  text?: {
+    content: string;
+    fontFamily?: string;
+    fontSize?: number;
+    align?: "left" | "center" | "right";
+    lineHeight?: number;
   };
   script?: string;
   scriptParams?: Record<string, unknown>;
