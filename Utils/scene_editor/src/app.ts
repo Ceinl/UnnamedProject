@@ -33,6 +33,7 @@ type EditorState = {
   };
   drag: DragState | null;
   dirty: boolean;
+  panOverride: boolean;
 };
 
 const state: EditorState = {
@@ -52,7 +53,8 @@ const state: EditorState = {
     zoom: 1
   },
   drag: null,
-  dirty: false
+  dirty: false,
+  panOverride: false
 };
 
 const elements = {
@@ -1120,6 +1122,7 @@ function getObjectAt(world: Vector2) {
   if (!scene) return null;
   const objects = [...scene.objects].sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0));
   for (const obj of objects) {
+    if (obj.editorVisible === false) continue;
     const scaleX = obj.scale?.x ?? 1;
     const scaleY = obj.scale?.y ?? 1;
     const halfW = (obj.size.width * scaleX) / 2;
@@ -1141,7 +1144,22 @@ function handleCanvasMouseDown(event: MouseEvent) {
   const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
   const world = screenToWorld(screen);
 
-  if (state.activeTool.startsWith("place")) {
+  const isPanButton = event.button === 1 || event.button === 2;
+  if (state.panOverride || isPanButton) {
+    state.drag = {
+      mode: "pan",
+      start: screen,
+      originCamera: { ...state.camera.position }
+    };
+    return;
+  }
+
+  if (event.button !== 0) return;
+
+  const hit = getObjectAt(world);
+  const isPlaceTool = state.activeTool.startsWith("place");
+
+  if (isPlaceTool && !hit) {
     const typeMap: Record<ToolType, GameObjectType> = {
       "place-prop": "prop",
       "place-collider": "collider",
@@ -1156,21 +1174,12 @@ function handleCanvasMouseDown(event: MouseEvent) {
       ? { x: snapPosition(world.x, scene.grid.size), y: snapPosition(world.y, scene.grid.size) }
       : world;
     addObjectAt(snapped, typeMap[state.activeTool]);
+    if (!event.shiftKey) setActiveTool("select");
     return;
   }
-
-  if (state.activeTool === "pan") {
-    state.drag = {
-      mode: "pan",
-      start: screen,
-      originCamera: { ...state.camera.position }
-    };
-    return;
-  }
-
-  const hit = getObjectAt(world);
   if (hit) {
     selectObject(hit.id);
+    if (isPlaceTool) setActiveTool("select");
     if (!hit.locked) {
       state.drag = {
         mode: "move",
@@ -1259,6 +1268,10 @@ function handleTabs(tab: string) {
 
 function handleShortcuts(event: KeyboardEvent) {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+  if (event.code === "Space") {
+    event.preventDefault();
+    state.panOverride = true;
+  }
   if (event.key.toLowerCase() === "v") setActiveTool("select");
   if (event.key.toLowerCase() === "m") setActiveTool("pan");
   if (event.key === "1") setActiveTool("place-prop");
@@ -1268,6 +1281,12 @@ function handleShortcuts(event: KeyboardEvent) {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
     event.preventDefault();
     void saveScene();
+  }
+}
+
+function handleKeyUp(event: KeyboardEvent) {
+  if (event.code === "Space") {
+    state.panOverride = false;
   }
 }
 
@@ -1303,7 +1322,9 @@ elements.canvas.addEventListener("mouseleave", handleCanvasMouseUp);
 elements.canvas.addEventListener("wheel", handleCanvasWheel, { passive: false });
 
 window.addEventListener("keydown", handleShortcuts);
+window.addEventListener("keyup", handleKeyUp);
 window.addEventListener("resize", resizeCanvas);
+elements.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 resizeCanvas();
 handleTabs("images");
 void loadProject();
