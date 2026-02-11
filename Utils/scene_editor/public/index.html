@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scene Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;600&family=Spline+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <div id="projectSelector" class="modal is-visible">
+        <div class="modal-card">
+          <h1>Connect a Project</h1>
+          <p>Select the root directory that contains <span>content/scenes/</span>.</p>
+          <div class="field">
+            <label for="projectPathInput">Project Path</label>
+            <input id="projectPathInput" type="text" placeholder="/Users/you/projects/my-game" />
+          </div>
+          <div class="modal-actions">
+            <button id="projectSelectButton" class="primary">Load Project</button>
+          </div>
+          <span id="projectStatus" class="muted">Waiting for input</span>
+        </div>
+      </div>
+
+      <div id="newSceneModal" class="modal">
+        <div class="modal-card">
+          <h1>Create Scene</h1>
+          <p>Start with a clean canvas and lay out your world.</p>
+          <div class="field">
+            <label for="newSceneId">Scene ID</label>
+            <input id="newSceneId" type="text" placeholder="forest_level_01" />
+          </div>
+          <div class="field">
+            <label for="newSceneName">Scene Name</label>
+            <input id="newSceneName" type="text" placeholder="Forest Level" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="newSceneWidth">Width</label>
+              <input id="newSceneWidth" type="number" min="256" value="3200" />
+            </div>
+            <div class="field">
+              <label for="newSceneHeight">Height</label>
+              <input id="newSceneHeight" type="number" min="256" value="1800" />
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button id="cancelNewSceneButton" class="ghost">Cancel</button>
+            <button id="createSceneButton" class="primary">Create Scene</button>
+          </div>
+        </div>
+      </div>
+
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-title">Scene Studio</div>
+          <div id="sceneName" class="brand-subtitle">No scene loaded</div>
+        </div>
+        <div class="topbar-center">
+          <div class="field-inline">
+            <label for="sceneSelect">Scene</label>
+            <select id="sceneSelect"></select>
+          </div>
+          <button id="newSceneButton" class="primary">New Scene</button>
+        </div>
+        <div class="topbar-actions">
+          <button id="saveButton" class="ghost">Save</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar left">
+          <section class="panel tools-panel">
+            <h2>Tools</h2>
+            <div class="tool-grid">
+              <button class="tool-button is-active" data-tool="select">Select</button>
+              <button class="tool-button" data-tool="pan">Pan</button>
+              <button class="tool-button" data-tool="place-prop">Place Prop</button>
+              <button class="tool-button" data-tool="place-collider">Place Collider</button>
+              <button class="tool-button" data-tool="place-trigger">Place Trigger</button>
+              <button class="tool-button" data-tool="place-spawn">Place Spawn</button>
+            </div>
+            <div class="tool-hint muted">V Select · M Pan · 1-4 Place</div>
+          </section>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Hierarchy</h2>
+              <button id="addObjectButton" class="ghost small">Add</button>
+            </div>
+            <div id="hierarchyList" class="list muted">No objects yet.</div>
+          </section>
+        </aside>
+
+        <main class="canvas-container">
+          <canvas id="sceneCanvas"></canvas>
+          <div class="canvas-overlay">
+            <div id="activeToolBadge" class="badge">Select</div>
+            <div id="activeAssetBadge" class="badge secondary">No asset selected</div>
+          </div>
+        </main>
+
+        <aside class="sidebar right">
+          <section class="panel inspector-panel">
+            <h2>Inspector</h2>
+            <div id="inspectorPanel" class="panel-body muted">Select an object to edit.</div>
+          </section>
+          <section class="panel asset-panel">
+            <div class="panel-header">
+              <h2>Assets</h2>
+              <div class="tab-group">
+                <button class="tab is-active" data-tab="images">Images</button>
+                <button class="tab" data-tab="scripts">Scripts</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div id="assetList" class="asset-grid"></div>
+              <div id="scriptList" class="script-list hidden"></div>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <footer class="status-bar">
+        <span id="coordinates" class="mono">X: 0, Y: 0</span>
+        <span id="zoomLevel" class="mono">100%</span>
+        <span id="projectPathLabel" class="muted">No project loaded</span>
+        <span id="status">Ready</span>
+      </footer>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
