@@ -71,49 +71,115 @@
           <button id="newSceneButton" class="primary">New Scene</button>
         </div>
         <div class="topbar-actions">
+          <button id="toggleLeftSidebarButton" class="ghost small">Left</button>
+          <button id="toggleRightSidebarButton" class="ghost small">Right</button>
+          <button id="toggleFocusModeButton" class="ghost small">Focus</button>
           <button id="saveButton" class="ghost">Save</button>
         </div>
       </header>
 
-      <div class="workspace">
-        <aside class="sidebar left">
+      <div id="workspace" class="workspace">
+        <aside id="leftSidebar" class="sidebar left">
           <section class="panel tools-panel">
-            <h2>Tools</h2>
-            <div class="tool-grid">
-              <button class="tool-button is-active" data-tool="select">Select</button>
-              <button class="tool-button" data-tool="pan">Pan</button>
-              <button class="tool-button" data-tool="place-prop">Place Prop</button>
-              <button class="tool-button" data-tool="place-collider">Place Collider</button>
-              <button class="tool-button" data-tool="place-trigger">Place Trigger</button>
-              <button class="tool-button" data-tool="place-spawn">Place Spawn</button>
+            <div class="panel-header compact">
+              <h2>Placement</h2>
+              <span id="objectCountBadge" class="tiny-badge">0 objects</span>
             </div>
-            <div class="tool-hint muted">V Select · M Pan · 1-4 Place</div>
+            <div class="tool-grid">
+              <button class="tool-button is-active" data-tool="select">
+                <strong>Select</strong>
+                <span>Pick and move objects</span>
+              </button>
+              <button class="tool-button" data-tool="pan">
+                <strong>Pan</strong>
+                <span>Move camera view</span>
+              </button>
+              <button class="tool-button" data-tool="place-prop">
+                <strong>Prop</strong>
+                <span>Place visual objects</span>
+              </button>
+              <button class="tool-button" data-tool="place-collider">
+                <strong>Collider</strong>
+                <span>Block and shape movement</span>
+              </button>
+              <button class="tool-button" data-tool="place-trigger">
+                <strong>Trigger</strong>
+                <span>Event zone placement</span>
+              </button>
+              <button class="tool-button" data-tool="place-spawn">
+                <strong>Spawn</strong>
+                <span>Spawn marker placement</span>
+              </button>
+              <button class="tool-button" data-tool="place-text">
+                <strong>Text</strong>
+                <span>Scene text and labels</span>
+              </button>
+            </div>
+            <div class="tool-hint muted">V Select, M Pan, 1-5 Place, Shift keeps placing, Scroll zoom</div>
           </section>
-          <section class="panel">
+
+          <section class="panel hierarchy-panel">
             <div class="panel-header">
-              <h2>Hierarchy</h2>
+              <h2>Scene Objects</h2>
               <button id="addObjectButton" class="ghost small">Add</button>
+            </div>
+            <div class="hierarchy-controls">
+              <input id="hierarchySearch" type="search" placeholder="Search by id, name, type" />
+              <div class="chip-row" id="hierarchyFilterRow">
+                <button class="chip is-active" data-filter="all">All</button>
+                <button class="chip" data-filter="prop">Prop</button>
+                <button class="chip" data-filter="collider">Collider</button>
+                <button class="chip" data-filter="trigger">Trigger</button>
+                <button class="chip" data-filter="spawn">Spawn</button>
+                <button class="chip" data-filter="text">Text</button>
+              </div>
             </div>
             <div id="hierarchyList" class="list muted">No objects yet.</div>
           </section>
         </aside>
 
-        <main class="canvas-container">
-          <canvas id="sceneCanvas"></canvas>
-          <div class="canvas-overlay">
-            <div id="activeToolBadge" class="badge">Select</div>
-            <div id="activeAssetBadge" class="badge secondary">No asset selected</div>
+        <main class="canvas-shell">
+          <div id="canvasToolbar" class="canvas-toolbar">
+            <div class="toolbar-group">
+              <span class="toolbar-label">Grid</span>
+              <button id="toggleGridButton" class="ghost small">On</button>
+              <button id="toggleSnapButton" class="ghost small">Snap: On</button>
+              <label class="inline-field" for="gridSizeInput">Size</label>
+              <input id="gridSizeInput" type="number" min="4" max="256" step="1" value="32" />
+            </div>
+            <div class="toolbar-group">
+              <span class="toolbar-label">View</span>
+              <button id="zoomOutButton" class="ghost small">-</button>
+              <button id="zoomInButton" class="ghost small">+</button>
+              <button id="focusSelectionButton" class="ghost small">Focus Selected</button>
+              <button id="fitSceneButton" class="ghost small">Fit Scene</button>
+            </div>
+          </div>
+
+          <div class="canvas-container">
+            <button id="showLeftSidebarButton" class="floating-toggle floating-left hidden" title="Show left panel">
+              ‹
+            </button>
+            <button id="showRightSidebarButton" class="floating-toggle floating-right hidden" title="Show right panel">
+              ›
+            </button>
+            <canvas id="sceneCanvas"></canvas>
+            <div id="canvasOverlay" class="canvas-overlay top-left">
+              <div id="activeToolBadge" class="badge">Select</div>
+              <div id="activeAssetBadge" class="badge secondary">No asset selected</div>
+              <div id="snapStateBadge" class="badge tertiary">Snap: On</div>
+            </div>
           </div>
         </main>
 
-        <aside class="sidebar right">
+        <aside id="rightSidebar" class="sidebar right">
           <section class="panel inspector-panel">
             <h2>Inspector</h2>
             <div id="inspectorPanel" class="panel-body muted">Select an object to edit.</div>
           </section>
           <section class="panel asset-panel">
             <div class="panel-header">
-              <h2>Assets</h2>
+              <h2>Library</h2>
               <div class="tab-group">
                 <button class="tab is-active" data-tab="images">Images</button>
                 <button class="tab" data-tab="scripts">Scripts</button>
