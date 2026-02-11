@@ -1,0 +1,43 @@
+{
+  "id": "sample_scene",
+  "name": "Sample Scene",
+  "version": "1.0.0",
+  "lastModified": "2026-02-11T10:30:00Z",
+  
+  "size": {
+    "width": 3200,
+    "height": 1800
+  },
+  
+  "backgroundColor": "#1a1a2e",
+  
+  "grid": {
+    "enabled": true,
+    "size": 32,
+    "snap": true,
+    "color": "rgba(255,255,255,0.1)",
+    "opacity": 0.5
+  },
+  
+  "camera": {
+    "defaultPosition": { "x": 1600, "y": 900 },
+    "defaultZoom": 1.0
+  },
+  
+  "layers": ["Background", "Ground", "Props", "Triggers", "Spawns"],
+  
+  "objects": [
+    {
+      "id": "player_spawn",
+      "type": "spawn",
+      "name": "Player Spawn Point",
+      "position": { "x": 100, "y": 1500 },
+      "size": { "width": 32, "height": 64 },
+      "color": "#5aff8b",
+      "zIndex": 50,
+      "tags": ["spawn", "player"]
+    }
+  ],
+  
+  "scripts": []
+}
