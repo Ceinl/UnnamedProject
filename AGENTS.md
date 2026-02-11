@@ -8,7 +8,7 @@ Love2D-based 2D game engine with browser-based visual editors.
 
 ## Technology Stack
 
-- **Runtime**: Bun (JavaScript/TypeScript)
+- **Runtime**: Love2D (Lua) + Bun tooling/editors (TypeScript)
 - **Frontend**: Vanilla TypeScript (no framework)
 - **Backend**: Bun HTTP server
 - **Game Engine**: Love2D (Lua)
@@ -78,6 +78,16 @@ make clean        # Remove build outputs
 make help         # Show all commands
 ```
 
+### Love2D Runtime
+
+```bash
+# Run runtime
+love Game
+
+# Lua syntax check for runtime
+find Game -name '*.lua' -type f -print0 | xargs -0 -n1 luac -p
+```
+
 ## Editor Ports
 
 - Scene Editor: http://localhost:5174
@@ -117,7 +127,7 @@ bun run build.ts
 1. Add type to `GameObjectType` in `Utils/scene_editor/types/scene.ts`
 2. Add rendering logic in `Utils/scene_editor/src/app.ts`
 3. Add property editor in inspector panel
-4. Update Love2D component (when runtime exists)
+4. Update Love2D runtime components/systems in `Game/src/`
 
 ### Adding a New Dialogue Node Type
 
@@ -129,12 +139,12 @@ bun run build.ts
 ### Adding a New Requirement Type
 
 1. Add to `REQ_TYPES` array in `Utils/dialog_editor/src/app.ts`
-2. Implement check in Love2D runtime (when exists)
+2. Implement runtime check in dialogue/state systems under `Game/src/`
 
 ### Adding a New Effect Type
 
 1. Add to `FX_TYPES` array in `Utils/dialog_editor/src/app.ts`
-2. Implement execution in Love2D runtime (when exists)
+2. Implement runtime execution in dialogue/state systems under `Game/src/`
 
 ## Testing
 
@@ -147,14 +157,14 @@ Currently no automated tests. Manual testing:
 
 ## Known Limitations
 
-- Love2D runtime not yet implemented (see BEHAVIOR_LAYER_GUIDE.md)
+- Dialogue runtime is currently a placeholder (core scene runtime is implemented)
 - No automated testing
-- No asset hot-reload
+- Script cache hot-reload exists; full asset hot-reload is not implemented
 - Editors require manual refresh after build
 
 ## Future Enhancements
 
-- Love2D runtime implementation
+- Expand runtime from core scene MVP to full gameplay systems
 - Asset hot-reload
 - Undo/redo system
 - Multi-user collaboration
@@ -163,18 +173,22 @@ Currently no automated tests. Manual testing:
 
 ## Project Context
 
-This is a work-in-progress game development toolset. The editors are functional, but the Love2D runtime needs to be built following the architecture in BEHAVIOR_LAYER_GUIDE.md.
+This is a work-in-progress game development toolset. The editors are functional and the core Love2D runtime foundation is implemented on branch `core`.
 
-When implementing Love2D components:
+When implementing or extending Love2D runtime features:
 1. Follow the component-based architecture
 2. Use the JSON structures produced by editors
 3. Implement all managers (Scene, Object, Script, Dialogue, State)
 4. Add systems for rendering, physics, and dialogue
-5. Test with sample scenes and dialogues
+5. Test with sample scenes and scene reload flow
+
+For scene authoring and runtime workflow details, use:
+- `RUNTIME_AGENT_PLAYBOOK.md` - Agent workflow for creating scenes and building/running the game
 
 ## Questions?
 
 Refer to:
 - `BEHAVIOR_LAYER_GUIDE.md` - Love2D implementation details
+- `RUNTIME_AGENT_PLAYBOOK.md` - Scene schema and game build/run workflow for agents
 - `Utils/scene_editor/scene_editor_guidelines.md` - Scene editor docs
 - `Utils/dialog_editor/guidelines.md` - Dialogue editor docs

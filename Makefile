@@ -2,7 +2,7 @@
 # Build tasks for release/deployment
 # Dev tasks for running editors locally
 
-.PHONY: all build scene dialog clean help dev dev-scene dev-dialog
+.PHONY: all build scene dialog clean help dev dev-scene dev-dialog game check
 
 # ==================== BUILD (for release/deployment) ====================
 
@@ -53,6 +53,19 @@ dev-dialog: dialog
 	@echo "Starting Dialog Editor on http://localhost:5173"
 	@cd Utils/dialog_editor && bun run server.ts
 
+# ==================== GAME ====================
+
+# Run the Love2D game
+game:
+	@echo "Starting Love2D game..."
+	@love Game
+
+# Check Lua syntax for all game files
+check:
+	@echo "Checking Lua syntax..."
+	@find Game -name '*.lua' -type f -print0 | xargs -0 -n1 luac -p
+	@echo "✓ Lua syntax check passed!"
+
 # ==================== HELP ====================
 
 help:
@@ -66,3 +79,7 @@ help:
 	@echo "  make dev          - Build and run both editors"
 	@echo "  make dev-scene    - Build and run Scene Editor (port 5174)"
 	@echo "  make dev-dialog   - Build and run Dialog Editor (port 5173)"
+	@echo ""
+	@echo "GAME tasks:"
+	@echo "  make game     - Run the Love2D game"
+	@echo "  make check    - Check Lua syntax (Game/**/*.lua)"
