@@ -1,4 +1,4 @@
-local Component = require("engine.components.Component")
+local Component = require("src.components.Component")
 
 local Transform = setmetatable({}, { __index = Component })
 Transform.__index = Transform

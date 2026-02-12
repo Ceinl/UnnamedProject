@@ -1,34 +1,34 @@
-local Engine = require("engine")
+local Game = require("src.core.Game")
 
 function love.load()
   love.graphics.setDefaultFilter("nearest", "nearest")
-  Engine.Game:init()
+  Game:init()
 end
 
 function love.update(dt)
-  Engine.Game:update(dt)
+  Game:update(dt)
 end
 
 function love.draw()
-  Engine.Game:draw()
+  Game:draw()
 end
 
 function love.keypressed(key, scancode, isrepeat)
-  Engine.Game:keypressed(key, scancode, isrepeat)
+  Game:keypressed(key, scancode, isrepeat)
 end
 
 function love.keyreleased(key)
-  Engine.Game:keyreleased(key)
+  Game:keyreleased(key)
 end
 
 function love.mousepressed(x, y, button)
-  Engine.Game:mousepressed(x, y, button)
+  Game:mousepressed(x, y, button)
 end
 
 function love.mousereleased(x, y, button)
-  Engine.Game:mousereleased(x, y, button)
+  Game:mousereleased(x, y, button)
 end
 
 function love.resize(width, height)
-  Engine.Game:resize(width, height)
+  Game:resize(width, height)
 end

@@ -1,4 +1,4 @@
-local Component = require("engine.components.Component")
+local Component = require("src.components.Component")
 
 local Script = setmetatable({}, { __index = Component })
 Script.__index = Script

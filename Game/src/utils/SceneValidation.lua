@@ -1,5 +1,5 @@
-local Path = require("engine.utils.Path")
-local TableUtils = require("engine.utils.TableUtils")
+local Path = require("src.utils.Path")
+local TableUtils = require("src.utils.TableUtils")
 
 local SceneValidation = {}
 

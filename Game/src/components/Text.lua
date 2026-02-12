@@ -1,5 +1,5 @@
-local Component = require("engine.components.Component")
-local Color = require("engine.utils.Color")
+local Component = require("src.components.Component")
+local Color = require("src.utils.Color")
 
 local Text = setmetatable({}, { __index = Component })
 Text.__index = Text

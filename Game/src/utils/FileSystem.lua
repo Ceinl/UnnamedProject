@@ -1,4 +1,4 @@
-local Path = require("engine.utils.Path")
+local Path = require("src.utils.Path")
 
 local FileSystem = {}
 

@@ -1,5 +1,5 @@
-local FileSystem = require("engine.utils.FileSystem")
-local Path = require("engine.utils.Path")
+local FileSystem = require("src.utils.FileSystem")
+local Path = require("src.utils.Path")
 
 local AssetManager = {}
 AssetManager.__index = AssetManager
