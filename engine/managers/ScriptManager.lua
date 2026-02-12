@@ -1,4 +1,4 @@
-local Path = require("src.utils.Path")
+local Path = require("engine.utils.Path")
 
 local ScriptManager = {}
 ScriptManager.__index = ScriptManager

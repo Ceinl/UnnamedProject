@@ -58,12 +58,13 @@ dev-dialog: dialog
 # Run the Love2D game
 game:
 	@echo "Starting Love2D game..."
-	@love Game
+	@love .
 
 # Check Lua syntax for all game files
 check:
 	@echo "Checking Lua syntax..."
-	@find Game -name '*.lua' -type f -print0 | xargs -0 -n1 luac -p
+	@find engine -name '*.lua' -type f -print0 | xargs -0 -n1 luac -p
+	@luac -p main.lua
 	@echo "✓ Lua syntax check passed!"
 
 # ==================== HELP ====================
@@ -82,4 +83,4 @@ help:
 	@echo ""
 	@echo "GAME tasks:"
 	@echo "  make game     - Run the Love2D game"
-	@echo "  make check    - Check Lua syntax (Game/**/*.lua)"
+	@echo "  make check    - Check Lua syntax (engine/**/*.lua + main.lua)"

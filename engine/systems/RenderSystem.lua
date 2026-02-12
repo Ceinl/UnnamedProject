@@ -1,4 +1,4 @@
-local Color = require("src.utils.Color")
+local Color = require("engine.utils.Color")
 
 local RenderSystem = {}
 RenderSystem.__index = RenderSystem

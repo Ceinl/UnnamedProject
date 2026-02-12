@@ -1,10 +1,10 @@
-local GameObject = require("src.entities.GameObject")
-local Transform = require("src.components.Transform")
-local Sprite = require("src.components.Sprite")
-local Collider = require("src.components.Collider")
-local Trigger = require("src.components.Trigger")
-local Script = require("src.components.Script")
-local Text = require("src.components.Text")
+local GameObject = require("engine.entities.GameObject")
+local Transform = require("engine.components.Transform")
+local Sprite = require("engine.components.Sprite")
+local Collider = require("engine.components.Collider")
+local Trigger = require("engine.components.Trigger")
+local Script = require("engine.components.Script")
+local Text = require("engine.components.Text")
 
 local ObjectManager = {}
 ObjectManager.__index = ObjectManager

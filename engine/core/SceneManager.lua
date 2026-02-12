@@ -1,6 +1,6 @@
-local json = require("libs.json")
-local FileSystem = require("src.utils.FileSystem")
-local SceneValidation = require("src.utils.SceneValidation")
+local json = require("engine.libs.json")
+local FileSystem = require("engine.utils.FileSystem")
+local SceneValidation = require("engine.utils.SceneValidation")
 
 local SceneManager = {}
 SceneManager.__index = SceneManager

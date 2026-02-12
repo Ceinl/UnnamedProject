@@ -1,4 +1,4 @@
-local Component = require("src.components.Component")
+local Component = require("engine.components.Component")
 
 local Trigger = setmetatable({}, { __index = Component })
 Trigger.__index = Trigger

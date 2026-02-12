@@ -1,18 +1,18 @@
-local Logger = require("src.utils.Logger")
-local EventBus = require("src.core.EventBus")
-local Camera = require("src.core.Camera")
-local ObjectManager = require("src.core.ObjectManager")
-local SceneManager = require("src.core.SceneManager")
+local Logger = require("engine.utils.Logger")
+local EventBus = require("engine.core.EventBus")
+local Camera = require("engine.core.Camera")
+local ObjectManager = require("engine.core.ObjectManager")
+local SceneManager = require("engine.core.SceneManager")
 
-local AssetManager = require("src.managers.AssetManager")
-local ScriptManager = require("src.managers.ScriptManager")
-local StateManager = require("src.managers.StateManager")
-local DialogueManager = require("src.managers.DialogueManager")
+local AssetManager = require("engine.managers.AssetManager")
+local ScriptManager = require("engine.managers.ScriptManager")
+local StateManager = require("engine.managers.StateManager")
+local DialogueManager = require("engine.managers.DialogueManager")
 
-local PhysicsSystem = require("src.systems.PhysicsSystem")
-local TriggerSystem = require("src.systems.TriggerSystem")
-local RenderSystem = require("src.systems.RenderSystem")
-local DialogueSystem = require("src.systems.DialogueSystem")
+local PhysicsSystem = require("engine.systems.PhysicsSystem")
+local TriggerSystem = require("engine.systems.TriggerSystem")
+local RenderSystem = require("engine.systems.RenderSystem")
+local DialogueSystem = require("engine.systems.DialogueSystem")
 
 local Game = {
   initialized = false,

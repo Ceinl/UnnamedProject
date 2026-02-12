@@ -1,4 +1,4 @@
-local Component = require("src.components.Component")
+local Component = require("engine.components.Component")
 
 local Collider = setmetatable({}, { __index = Component })
 Collider.__index = Collider
